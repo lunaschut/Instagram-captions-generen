@@ -1,0 +1,6 @@
+{
+  "name": "InstaCaptions AI",
+  "description": "Genereer moeiteloos pakkende, creatieve Instagram-captions en relevante hashtags op basis van slimme AI-analyse van je foto's.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

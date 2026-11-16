@@ -66,6 +66,7 @@ export default function App() {
   // Logged-in user (Supabase Auth) and their saved captions (Supabase database)
   const [session, setSession] = useState<Session | null>(null);
   const [savedCaptions, setSavedCaptions] = useState<SavedCaption[]>([]);
+  const [isRecovering, setIsRecovering] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalMessage, setAuthModalMessage] = useState<string | null>(null);
 
@@ -81,8 +82,14 @@ export default function App() {
   // Keep track of who is logged in
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      // Opened from the link in a password-reset e-mail: ask for a new password.
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecovering(true);
+        setAuthModalMessage(null);
+        setIsAuthModalOpen(true);
+      }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -646,8 +653,12 @@ export default function App() {
       {/* Login / sign-up modal (Supabase Auth) */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setIsRecovering(false);
+        }}
         message={authModalMessage}
+        isRecovering={isRecovering}
       />
 
       {/* Saved Captions Modal */}

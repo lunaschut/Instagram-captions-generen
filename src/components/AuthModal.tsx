@@ -6,9 +6,10 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   message?: string | null;
+  isRecovering?: boolean;
 }
 
-type Mode = 'login' | 'signup';
+type Mode = 'login' | 'signup' | 'forgot' | 'reset';
 
 function translateAuthError(message: string): string {
   const m = message.toLowerCase();
@@ -20,8 +21,9 @@ function translateAuthError(message: string): string {
   return message;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, message }) => {
-  const [mode, setMode] = useState<Mode>('login');
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, message, isRecovering = false }) => {
+  const [localMode, setMode] = useState<Mode>('login');
+  const mode: Mode = isRecovering ? 'reset' : localMode;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isBusy, setIsBusy] = useState(false);
@@ -36,7 +38,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, message }
     setInfo(null);
     setIsBusy(true);
     try {
-      if (mode === 'login') {
+      if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+        });
+        if (error) throw error;
+        setInfo('Als dit e-mailadres bij een account hoort, krijg je een mail met een link om een nieuw wachtwoord in te stellen.');
+      } else if (mode === 'reset') {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        setPassword('');
+        onClose();
+      } else if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         setPassword('');
@@ -69,7 +82,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, message }
       <div className="bg-white max-w-sm w-full p-6 sm:p-7 shadow-2xl border border-neutral-300">
         <div className="flex items-center justify-between pb-3 border-b border-neutral-200 mb-4">
           <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-black">
-            {mode === 'login' ? 'Inloggen' : 'Account aanmaken'}
+            {{ login: 'Inloggen', signup: 'Account aanmaken', forgot: 'Wachtwoord vergeten', reset: 'Nieuw wachtwoord' }[mode]}
           </h3>
           <button
             type="button"
@@ -83,6 +96,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, message }
         {message && <p className="text-xs text-neutral-600 mb-4">{message}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-3">
+          {mode !== 'reset' && (
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-600 mb-1">
               E-mailadres
@@ -96,9 +110,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, message }
               className="w-full border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-black"
             />
           </div>
+          )}
+          {mode !== 'forgot' && (
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-600 mb-1">
-              Wachtwoord
+              {mode === 'reset' ? 'Nieuw wachtwoord' : 'Wachtwoord'}
             </label>
             <input
               type="password"
@@ -110,6 +126,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, message }
               className="w-full border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-black"
             />
           </div>
+          )}
+
+          {mode === 'login' && (
+            <div className="text-right -mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('forgot');
+                  setError(null);
+                  setInfo(null);
+                }}
+                className="text-xs underline text-neutral-600 hover:text-black"
+              >
+                Wachtwoord vergeten?
+              </button>
+            </div>
+          )}
 
           {error && <p className="text-xs text-red-600">{error}</p>}
           {info && <p className="text-xs text-green-700">{info}</p>}
@@ -120,10 +153,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, message }
             className="editorial-btn w-full px-4 py-2.5 flex items-center justify-center gap-2 disabled:opacity-60"
           >
             {isBusy && <Loader2 className="w-4 h-4 animate-spin" />}
-            <span>{mode === 'login' ? 'Inloggen' : 'Account aanmaken'}</span>
+            <span>
+              {{ login: 'Inloggen', signup: 'Account aanmaken', forgot: 'Stuur herstelmail', reset: 'Wachtwoord opslaan' }[mode]}
+            </span>
           </button>
         </form>
 
+        {mode === 'reset' ? null : mode === 'forgot' ? (
+          <p className="text-xs text-neutral-500 mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setError(null);
+                setInfo(null);
+              }}
+              className="underline text-black"
+            >
+              Terug naar inloggen
+            </button>
+          </p>
+        ) : (
         <p className="text-xs text-neutral-500 mt-4 text-center">
           {mode === 'login' ? 'Nog geen account?' : 'Heb je al een account?'}{' '}
           <button
@@ -138,6 +188,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, message }
             {mode === 'login' ? 'Maak er een aan' : 'Log in'}
           </button>
         </p>
+        )}
       </div>
     </div>
   );

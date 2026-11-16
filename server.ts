@@ -565,8 +565,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'InstaCaptions AI' });
 });
 
-// Mount Vite in development or serve static in production
-if (process.env.NODE_ENV !== 'production') {
+// Mount Vite in development or serve static in production.
+// On Vercel the static files are served by Vercel itself, so we skip this there.
+if (process.env.VERCEL) {
+  // Running as a Vercel serverless function: only the /api routes are needed.
+} else if (process.env.NODE_ENV !== 'production') {
   const { createServer: createViteServer } = await import('vite');
   const vite = await createViteServer({
     server: { middlewareMode: true },
@@ -580,6 +583,11 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-app.listen(port, host, () => {
-  console.log(`Server running on http://${host}:${port}`);
-});
+// On Vercel the app is exported as a serverless function instead of listening on a port.
+if (!process.env.VERCEL) {
+  app.listen(port, host, () => {
+    console.log(`Server running on http://${host}:${port}`);
+  });
+}
+
+export default app;

@@ -9,7 +9,8 @@ import {
   Smartphone,
   Copy,
   Check,
-  Smile
+  Smile,
+  Camera
 } from 'lucide-react';
 import { CaptionOption } from '../types';
 import { copyToClipboard } from '../utils/imageUtils';
@@ -69,13 +70,31 @@ export const InstagramMockup: React.FC<InstagramMockupProps> = ({
 
   if (!imageSrc || !activeCaption) {
     return (
-      <div className="bg-white border border-neutral-200 p-8 sm:p-12 text-center">
-        <Smartphone className="w-8 h-8 text-neutral-300 mx-auto mb-3 stroke-1" />
-        <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-black mb-1">
-          Instagram Live Mockup
-        </h4>
-        <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
-          Zodra de foto is geanalyseerd en captions zijn gegenereerd, verschijnt hier de live Instagram feed post preview.
+      <div className="bg-white border border-neutral-200 p-5 sm:p-6">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-neutral-100">
+          <div className="flex items-center gap-2">
+            <Smartphone className="w-3.5 h-3.5 text-black" />
+            <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-black">Feed Mockup</h3>
+          </div>
+          <span className="text-[9px] font-mono px-1.5 py-0.5 border border-neutral-300 text-neutral-500 uppercase tracking-wider">
+            Voorbeeld
+          </span>
+        </div>
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="w-8 h-8 rounded-full bg-neutral-200" />
+          <div className="text-xs font-bold text-black">roosjploeg</div>
+        </div>
+        <div className="aspect-square bg-neutral-100 border border-neutral-200 flex flex-col items-center justify-center text-neutral-400 mb-3">
+          <Camera className="w-8 h-8 stroke-1 mb-2" />
+          <span className="text-[11px] uppercase tracking-[0.15em] font-bold">Jouw foto</span>
+        </div>
+        <div className="flex items-center gap-4 mb-2 text-neutral-300">
+          <Heart className="w-5 h-5" />
+          <MessageCircle className="w-5 h-5" />
+          <Send className="w-5 h-5" />
+        </div>
+        <p className="text-xs text-neutral-400 italic leading-relaxed">
+          Zodra je foto is geanalyseerd, verschijnt hier je caption live in een Instagram-post.
         </p>
       </div>
     );

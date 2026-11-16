@@ -411,7 +411,7 @@ export default function App() {
       />
 
       {/* Editorial Hero Header */}
-      <section className="pt-12 pb-8 px-4 sm:px-8 max-w-7xl mx-auto text-left w-full border-b border-neutral-100">
+      <section className="pt-8 pb-6 px-4 sm:px-8 max-w-7xl mx-auto text-left w-full border-b border-neutral-100">
         <div className="max-w-4xl">
           <div className="text-[11px] font-bold text-neutral-500 uppercase tracking-[0.25em] mb-3">
             ROOSJPLOEG STUDIO // AI VISUAL CAPTIONS
@@ -427,7 +427,7 @@ export default function App() {
       </section>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-8 py-8 w-full space-y-10">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-8 py-6 w-full space-y-6">
         {/* Error Alert */}
         {errorMsg && (
           <div className="p-4 bg-neutral-100 border border-black text-black text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -452,9 +452,9 @@ export default function App() {
         )}
 
         {/* Workflow Grid: Upload & Context on Left, Live Mockup on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           {/* Left Column (Upload & Context) */}
-          <div className="lg:col-span-7 space-y-8">
+          <div className="lg:col-span-7 space-y-6">
             {/* 1. Upload Section */}
             <UploadSection
               imagePreview={imagePreview}

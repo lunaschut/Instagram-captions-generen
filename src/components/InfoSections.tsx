@@ -26,8 +26,8 @@ export const HowItWorksSection: React.FC = () => {
   ];
 
   return (
-    <section id="hoe-het-werkt" className="my-20 py-16 border-t border-neutral-200">
-      <div className="max-w-4xl mx-auto text-center mb-12">
+    <section id="hoe-het-werkt" className="my-10 py-10 border-t border-neutral-200">
+      <div className="max-w-4xl mx-auto text-center mb-8">
         <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-[0.2em] block mb-2">
           Method &amp; Process
         </span>
@@ -86,7 +86,7 @@ export const FaqSection: React.FC = () => {
   ];
 
   return (
-    <section id="faq" className="my-16 py-12 border-t border-neutral-200">
+    <section id="faq" className="my-8 py-10 border-t border-neutral-200">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-10">
           <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-[0.2em] block mb-2">
@@ -116,7 +116,7 @@ export const FaqSection: React.FC = () => {
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="mt-24 py-12 border-t border-neutral-200 bg-white text-xs text-neutral-500">
+    <footer className="mt-12 py-8 border-t border-neutral-200 bg-white text-xs text-neutral-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
           <div className="text-base font-bold tracking-[0.2em] text-black uppercase editorial-logo mb-1">

@@ -50,7 +50,7 @@ export const SavedCaptionsModal: React.FC<SavedCaptionsModalProps> = ({
               Opgeslagen Captions
             </h3>
             <p className="text-[11px] text-neutral-500">
-              {savedCaptions.length} {savedCaptions.length === 1 ? 'item' : 'items'} in je lokale browseropslag
+              {savedCaptions.length} {savedCaptions.length === 1 ? 'item' : 'items'} in je account
             </p>
           </div>
           <button

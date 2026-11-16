@@ -23,6 +23,9 @@ import { CaptionCard } from './components/CaptionCard';
 import { InstagramMockup } from './components/InstagramMockup';
 import { RefineModal } from './components/RefineModal';
 import { SavedCaptionsModal } from './components/SavedCaptionsModal';
+import { AuthModal } from './components/AuthModal';
+import { supabase } from './lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 import { HowItWorksSection, FaqSection, Footer } from './components/InfoSections';
 import {
   PhotoAnalysis,
@@ -32,7 +35,7 @@ import {
   SamplePhoto,
   PlatformCaptionsGroup
 } from './types';
-import { urlToBase64 } from './utils/imageUtils';
+import { urlToBase64, createThumbnail } from './utils/imageUtils';
 import { SAMPLE_PHOTOS } from './data/samplePhotos';
 
 export default function App() {
@@ -60,31 +63,107 @@ export default function App() {
   const [activePlatformFilter, setActivePlatformFilter] = useState<string>('all');
   const [selectedMockupIndex, setSelectedMockupIndex] = useState<number>(0);
 
-  // Saved captions from localStorage
-  const [savedCaptions, setSavedCaptions] = useState<SavedCaption[]>(() => {
-    try {
-      const stored = localStorage.getItem('instacaptions_saved');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Logged-in user (Supabase Auth) and their saved captions (Supabase database)
+  const [session, setSession] = useState<Session | null>(null);
+  const [savedCaptions, setSavedCaptions] = useState<SavedCaption[]>([]);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authModalMessage, setAuthModalMessage] = useState<string | null>(null);
 
   const [isSavedModalOpen, setIsSavedModalOpen] = useState<boolean>(false);
   const [refiningCaption, setRefiningCaption] = useState<CaptionOption | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('instacaptions_saved', JSON.stringify(savedCaptions));
-    } catch (e) {
-      console.error('Failed to save to localStorage', e);
-    }
-  }, [savedCaptions]);
-
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Keep track of who is logged in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const userId = session?.user?.id ?? null;
+
+  // Load the saved captions of the logged-in user
+  useEffect(() => {
+    if (!userId) {
+      setSavedCaptions([]);
+      return;
+    }
+    let cancelled = false;
+
+    const load = async () => {
+      // One-time move of captions that were saved in this browser before accounts existed
+      try {
+        const stored = localStorage.getItem('instacaptions_saved');
+        const local: SavedCaption[] = stored ? JSON.parse(stored) : [];
+        if (local.length > 0) {
+          const rows = await Promise.all(
+            local.map(async (item) => ({
+              caption_id: item.id,
+              platform: item.platform ?? null,
+              caption: item.caption,
+              hashtags: item.hashtags ?? [],
+              location: item.location ?? null,
+              style_name: item.styleName ?? null,
+              image_thumbnail: await createThumbnail(item.imageUrl),
+              created_at: new Date(item.timestamp || Date.now()).toISOString(),
+            }))
+          );
+          const { error } = await supabase
+            .from('saved_captions')
+            .upsert(rows, { onConflict: 'user_id,caption_id', ignoreDuplicates: true });
+          if (!error) localStorage.removeItem('instacaptions_saved');
+        }
+      } catch (e) {
+        console.error('Kon lokale captions niet overzetten', e);
+      }
+
+      const { data, error } = await supabase
+        .from('saved_captions')
+        .select('caption_id, platform, caption, hashtags, location, style_name, image_thumbnail, created_at')
+        .order('created_at', { ascending: false });
+
+      if (cancelled) return;
+      if (error) {
+        console.error('Fout bij laden opgeslagen captions:', error);
+        showToast('Opgeslagen captions konden niet worden geladen.');
+        return;
+      }
+      setSavedCaptions(
+        (data || []).map((row: any) => ({
+          id: row.caption_id,
+          imageUrl: row.image_thumbnail || '',
+          platform: row.platform || undefined,
+          caption: row.caption,
+          hashtags: row.hashtags || [],
+          location: row.location || '',
+          styleName: row.style_name || '',
+          timestamp: new Date(row.created_at).getTime(),
+        }))
+      );
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const openLogin = (message?: string) => {
+    setAuthModalMessage(message ?? null);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsSavedModalOpen(false);
+    showToast('Je bent uitgelogd.');
   };
 
   const handleImageSelected = (
@@ -232,29 +311,68 @@ export default function App() {
     showToast('Caption bijgewerkt!');
   };
 
-  const handleSaveCaption = (caption: CaptionOption) => {
-    const isAlreadySaved = savedCaptions.some((s) => s.id === caption.id);
-    if (isAlreadySaved) {
-      setSavedCaptions((prev) => prev.filter((s) => s.id !== caption.id));
-      showToast('Caption verwijderd uit favorieten.');
-    } else {
-      const newSaved: SavedCaption = {
-        id: caption.id,
-        imageUrl: imagePreview || '',
-        caption: caption.captionBody,
-        hashtags: caption.hashtags,
-        location: caption.suggestedLocation,
-        styleName: caption.styleName,
-        timestamp: Date.now(),
-      };
-      setSavedCaptions((prev) => [newSaved, ...prev]);
-      showToast('Caption bewaard in favorieten!');
+  const deleteSavedFromDb = async (id: string) => {
+    const previous = savedCaptions;
+    setSavedCaptions((prev) => prev.filter((s) => s.id !== id));
+    const { error } = await supabase.from('saved_captions').delete().eq('caption_id', id);
+    if (error) {
+      console.error('Fout bij verwijderen:', error);
+      setSavedCaptions(previous);
+      showToast('Verwijderen is mislukt. Probeer het opnieuw.');
+      return false;
     }
+    return true;
   };
 
-  const handleDeleteSaved = (id: string) => {
-    setSavedCaptions((prev) => prev.filter((s) => s.id !== id));
-    showToast('Item verwijderd.');
+  const handleSaveCaption = async (caption: CaptionOption) => {
+    if (!userId) {
+      openLogin('Log in of maak een gratis account aan om captions op te slaan. Je ziet ze dan op al je apparaten.');
+      return;
+    }
+
+    const isAlreadySaved = savedCaptions.some((s) => s.id === caption.id);
+    if (isAlreadySaved) {
+      if (await deleteSavedFromDb(caption.id)) showToast('Caption verwijderd uit favorieten.');
+      return;
+    }
+
+    const thumbnail = await createThumbnail(imagePreview || '');
+    const newSaved: SavedCaption = {
+      id: caption.id,
+      imageUrl: thumbnail,
+      platform: caption.platform,
+      caption: caption.captionBody,
+      hashtags: caption.hashtags,
+      location: caption.suggestedLocation,
+      styleName: caption.styleName,
+      timestamp: Date.now(),
+    };
+    setSavedCaptions((prev) => [newSaved, ...prev]);
+
+    const { error } = await supabase.from('saved_captions').upsert(
+      {
+        caption_id: newSaved.id,
+        platform: newSaved.platform ?? null,
+        caption: newSaved.caption,
+        hashtags: newSaved.hashtags ?? [],
+        location: newSaved.location ?? null,
+        style_name: newSaved.styleName ?? null,
+        image_thumbnail: thumbnail,
+      },
+      { onConflict: 'user_id,caption_id' }
+    );
+
+    if (error) {
+      console.error('Fout bij opslaan:', error);
+      setSavedCaptions((prev) => prev.filter((s) => s.id !== newSaved.id));
+      showToast('Opslaan is mislukt. Probeer het opnieuw.');
+      return;
+    }
+    showToast('Caption bewaard in je account!');
+  };
+
+  const handleDeleteSaved = async (id: string) => {
+    if (await deleteSavedFromDb(id)) showToast('Item verwijderd.');
   };
 
   const handleApplyRefined = (newCaptionText: string) => {
@@ -279,7 +397,14 @@ export default function App() {
       {/* Top Navbar in roosjploeg.com styling */}
       <Navbar
         savedCount={savedCaptions.length}
-        onOpenSaved={() => setIsSavedModalOpen(true)}
+        onOpenSaved={() =>
+          userId
+            ? setIsSavedModalOpen(true)
+            : openLogin('Log in om je opgeslagen captions te bekijken.')
+        }
+        userEmail={session?.user?.email ?? null}
+        onLogin={() => openLogin()}
+        onLogout={handleLogout}
         onReset={handleClearImage}
         hasActiveImage={!!imagePreview}
         onSelectCategory={handleSelectCategory}
@@ -516,6 +641,13 @@ export default function App() {
         onApplyRefined={handleApplyRefined}
         extraContext={extraContext}
         language={settings.language}
+      />
+
+      {/* Login / sign-up modal (Supabase Auth) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        message={authModalMessage}
       />
 
       {/* Saved Captions Modal */}

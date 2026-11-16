@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bookmark, Plus, Camera } from 'lucide-react';
+import { Bookmark, Plus, Camera, LogIn, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   savedCount: number;
@@ -7,6 +7,9 @@ interface NavbarProps {
   onReset: () => void;
   hasActiveImage: boolean;
   onSelectCategory?: (category: string) => void;
+  userEmail: string | null;
+  onLogin: () => void;
+  onLogout: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -15,6 +18,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onReset,
   hasActiveImage,
   onSelectCategory,
+  userEmail,
+  onLogin,
+  onLogout,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200">
@@ -79,6 +85,27 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Clean monochrome actions */}
         <div className="flex items-center gap-3">
+          {userEmail ? (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-600 hover:text-black transition-colors tracking-wider uppercase"
+              title={`Ingelogd als ${userEmail}. Klik om uit te loggen.`}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Uitloggen</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onLogin}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-600 hover:text-black transition-colors tracking-wider uppercase"
+              title="Inloggen"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Inloggen</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenSaved}
